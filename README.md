@@ -1,123 +1,123 @@
 ```man
 
-[0;1mNAME[0m
+NAME
     make - C/C++ 프로젝트 빌드 시스템
 
-[0;1mSYNOPSIS[0m
-    make [[0;36mtarget[0m] [[0;33mMAIN_SRC[0m=[0;35mfile[0m] [[0;33mOUTPUT_MODE[0m=[0;35mmode[0m] [[0;33mSTDIN, STDOUT, STDERR[0m=[0;35mfile[0m]
+SYNOPSIS
+    make [target] [MAIN_SRC=file] [OUTPUT_MODE=mode] [STDIN, STDOUT, STDERR=file]
 
-[0;1mDESCRIPTION[0m
+DESCRIPTION
     C/C++ 소스 코드를 컴파일하고 실행 파일을 생성합니다.
     헤더 파일 의존성을 자동으로 분석하여 관련 소스 파일을 함께 컴파일합니다. 만약 정교한 의존성 분석이 필요하다면 DEPENDENCY_MODE 변수를 조정할 수 있습니다.
 
-[0;1mTARGETS[0m
-    [0;36mbuild[0m
+TARGETS
+    build
         소스 파일을 컴파일하여 실행 파일을 생성합니다.
         MAIN_SRC가 지정되지 않으면 main.c 또는 main.cpp를 자동 탐색합니다.
 
-    [0;36mrun[0m
+    run
         빌드된 실행 파일을 실행합니다.
         실행 파일이 없으면 에러를 반환합니다.
 
-    [0;36mbuild-run[0m
+    build-run
         빌드와 실행을 연속으로 수행합니다. 가장 많이 사용되는 타겟입니다.
 
-    [0;36mclean[0m
+    clean
         빌드 디렉토리(ex: build/)를 안전하게 삭제합니다.
         이 Makefile로 생성된 디렉토리만 삭제합니다.
         안전을 위해 마커 파일(.make_safe_marker)이 없으면 삭제를 거부하고 종료 코드 1을 반환합니다.
 
-    [0;36mclean-build[0m
+    clean-build
         클린 후 완전히 새로 빌드합니다.
 
-    [0;36mclean-build-run[0m
+    clean-build-run
         클린, 빌드, 실행을 순차적으로 수행합니다.
 
-    [0;36mhelp[0m
+    help
         이 도움말을 표시합니다.
 
-[0;1mVARIABLES[0m
-    [0;33mMAIN_SRC[0m=[0;35mfile[0m  (짧은 별칭: [0;33ms[0m=[0;35mfile[0m) (관련 타켓 : build, run)
+VARIABLES
+    MAIN_SRC=file  (짧은 별칭: s=file) (관련 타켓 : build, run)
         빌드할 메인 소스 파일의 경로를 지정합니다.
         지정하지 않으면 main.c 또는 main.cpp를 자동으로 탐색합니다.
         예: make build s=test.cpp
 
-    [0;33mOUTPUT_MODE[0m=[0;35mmode[0m  (짧은 별칭: [0;33mm[0m=[0;35mmode[0m) (관련 타켓 : 전체)
+    OUTPUT_MODE=mode  (짧은 별칭: m=mode) (관련 타켓 : 전체)
         빌드 과정의 출력 형식을 제어합니다.
         예: make build m=verbose 또는 make build m=v
 
-        [0;35mnormal  (n)[0m    한글 메시지, 색상 강조 (기본값)
-        [0;35msilent  (s)[0m    성공 시 출력 없음, 에러만 표시
-        [0;35mverbose (v)[0m    영어 메시지, 모든 명령어 출력
-        [0;35mbinary  (b)[0m    바이너리 경로만 출력 (도구 연동용)
-        [0;35mraw     (r)[0m    Make, 컴파일러, 링커 원본 출력만 표시
+        normal  (n)    한글 메시지, 색상 강조 (기본값)
+        silent  (s)    성공 시 출력 없음, 에러만 표시
+        verbose (v)    영어 메시지, 모든 명령어 출력
+        binary  (b)    바이너리 경로만 출력 (도구 연동용)
+        raw     (r)    Make, 컴파일러, 링커 원본 출력만 표시
 
-    [0;33mSTDIN[0m=[0;35mfile[0m (짧은 별칭: [0;33mi[0m=[0;35mfile[0m) (관련 타켓 : run)
+    STDIN=file (짧은 별칭: i=file) (관련 타켓 : run)
         실행 파일의 표준 입력을 지정된 파일로 리다이렉션합니다.
         예: make run s=leetcode/700.cpp STDIN=input.txt
 
-    [0;33mSTDOUT[0m=[0;35mfile[0m (짧은 별칭: [0;33mo[0m=[0;35mfile[0m) (관련 타켓 : run)
+    STDOUT=file (짧은 별칭: o=file) (관련 타켓 : run)
         실행 파일의 표준 출력을 지정된 파일로 리다이렉션합니다.
         예: make run s=leetcode/700.cpp STDOUT=output.txt
 
-    [0;33mSTDERR[0m=[0;35mfile[0m (짧은 별칭: [0;33me[0m=[0;35mfile[0m) (관련 타켓 : run)
+    STDERR=file (짧은 별칭: e=file) (관련 타켓 : run)
         실행 파일의 표준 오류 출력을 지정된 파일로 리다이렉션합니다.
         예: make run s=leetcode/700.cpp STDERR=error.log
 
-    [0;33mARGS[0m=[0;35myou want[0m (짧은 별칭: [0;33ma[0m=[0;35myou want[0m) (관련 타켓 : run)
+    ARGS=you want (짧은 별칭: a=you want) (관련 타켓 : run)
         실행 파일에 전달할 명령줄 인수를 지정합니다.
         예: make run s=leetcode/700.cpp ARGS="arg1 arg2"
         예: make run s=leetcode/700.cpp a="| grep 'test'"
         예: make run s=leetcode/700.cpp a="< input.txt > output.txt"
-        [0;33mSTDIN[0m, [0;33mSTDOUT[0m, [0;33mSTDERR[0m 변수 대신 사용할 수 있습니다.
+        STDIN, STDOUT, STDERR 변수 대신 사용할 수 있습니다.
 
-[0;1mADVANCED VARIABLES[0m : 일반적으로 인수로 지정하지 않고 Makefile 내에서 설정합니다. 하지만 필요에 따라 인수로 지정할 수 있습니다.
+ADVANCED VARIABLES : 일반적으로 인수로 지정하지 않고 Makefile 내에서 설정합니다. 하지만 필요에 따라 인수로 지정할 수 있습니다.
 
-    [0;33mPROJECT_ROOT[0m=[0;35mdir[0m
+    PROJECT_ROOT=dir
         프로젝트의 루트 디렉토리를 지정합니다. 기본값은 현재 디렉토리(./)입니다.
 
-    [0;33mSRC_ROOT[0m=[0;35mdir[0m
+    SRC_ROOT=dir
         소스 파일이 위치한 디렉토리를 지정합니다. 기본값은 프로젝트 루트 디렉토리(./)입니다.
 
-    [0;33mBUILD_ROOT[0m=[0;35mdir[0m
+    BUILD_ROOT=dir
         빌드 결과물이 생성될 디렉토리를 지정합니다. 기본값은 ./build/입니다.
 
-    [0;33mCC[0m=[0;35mcompiler[0m
+    CC=compiler
         C 컴파일러를 지정합니다. 기본값은 gcc입니다. mac 의 경우 지정하지 않아도 clang이 기본 사용됩니다.
 
-    [0;33mCXX[0m=[0;35mcompiler[0m
+    CXX=compiler
         C++ 컴파일러를 지정합니다. 기본값은 g++입니다. mac 의 경우 지정하지 않아도 clang++이 기본 사용됩니다.
 
-    [0;33mCPPFLAGS[0m+=[0;35mflags[0m (= 대신 += 사용)
+    CPPFLAGS+=flags (= 대신 += 사용)
         공통 전처리기 플래그를 지정합니다. 기본값은 SRC_ROOT 경로입니다.
 
-    [0;33mCFLAGS[0m+=[0;35mflags[0m (= 대신 += 사용)
+    CFLAGS+=flags (= 대신 += 사용)
         C++ 컴파일러 플래그를 지정합니다. 기본값은 -std=c11 -g -Wall I. 입니다.
 
-    [0;33mCXXFLAGS[0m+=[0;35mflags[0m (= 대신 += 사용)
+    CXXFLAGS+=flags (= 대신 += 사용)
         C 컴파일러 플래그를 지정합니다. 기본값은 -std=c++17 -g -Wall I.입니다.
 
-    [0;33mLDFLAGS[0m+=[0;35mflags[0m (= 대신 += 사용)
+    LDFLAGS+=flags (= 대신 += 사용)
         링커 플래그를 지정합니다. 기본값은 빈 문자열입니다.
         예: make build LDFLAGS+=-pthread
 
-    [0;33mLDLIBS[0m+=[0;35mflags[0m (= 대신 += 사용)
+    LDLIBS+=flags (= 대신 += 사용)
         링커 라이브러리 플래그를 지정합니다. 기본값은 빈 문자열입니다.
         예: make build LDLIBS+=-lm
-    [0;33mDEPENDENCY_MODE[0m=[0;35mmode[0m
+    DEPENDENCY_MODE=mode
         의존성 탐색 방식을 설정합니다. (기본값: path)
-         [0;35mfile[0m : [기본값] 파일명 기반 매칭 (Filename Matching)
+         file : [기본값] 파일명 기반 매칭 (Filename Matching)
              include/ 와 src/ 가 분리된 일반적인 프로젝트 구조 지원
              헤더: include/utils.h -> 소스: src/utils.cpp (찾음)
              단, 프로젝트 내에 '파일명'은 유일해야 합니다. (중복 시 충돌 가능)
-         [0;35mpath[0m : 경로 기반 매칭 (Path Matching)
+         path : 경로 기반 매칭 (Path Matching)
              헤더와 소스가 같은 폴더에 위치해야 함 (Colocation)
              소스 파일명이 중복되는 경우 필수
              헤더: problem1/sol.h -> 소스: problem1/sol.cpp (찾음)
              헤더: problem1/sol.h -> 소스: problem2/sol.cpp (무시함 - 안전)
-         [0;35mstandalone[0m : 단독 빌드.
+         standalone : 단독 빌드.
              의존성 파일을 찾지 않고 MAIN_SRC만 빌드.
-         [0;35mall[0m
+         all
              전체 링크. 프로젝트 내 모든 소스를 링크 (main 중복 시 링커 에러).
              프로젝트 내의 모든 소스 파일을 컴파일 목록에 포함합니다 (전이적 의존성 임시 해결책).
              링커의 Dead Code Stripping 기능을 신뢰해 모든 파일을 포함하는 방식입니다.
@@ -126,18 +126,18 @@
                  CFLAGS   += -fdata-sections -ffunction-sections
                  LDFLAGS  += -Wl,--gc-sections
              정확한 전이적 의존성 해결 또는 정교한 빌드 기능을 원한다면 다른 고수준의 빌드 시스템(CMake, Bazel 등)을 사용하는 것을 권장합니다.
-         [0;35mtransitive_path[0m
+         transitive_path
              전이적 탐색 (Transitive Dependency Discovery) - 동일 폴더 기반
              BFS 알고리즘을 사용하여 소스->헤더->소스 연결 고리를 끝까지 추적합니다.
              include/utils.h -> src/utils.cpp 뿐만 아니라, src/utils.cpp가 포함하는 다른 헤더와 소스 파일도 함께 탐색합니다.
              헤더와 소스 파일이 동일 폴더에 위치해야 합니다.
-         [0;35mtransitive_file[0m
+         transitive_file
              전이적 탐색 (Transitive Dependency Discovery) - 동일 이름 기반
              BFS 알고리즘을 사용하여 소스->헤더->소스 연결 고리를 끝까지 추적합니다.
              include/utils.h -> src/utils.cpp 뿐만 아니라, src/utils.cpp가 포함하는 다른 헤더와 소스 파일도 함께 탐색합니다.
              헤더와 소스 파일이 동일 이름을 가져야 합니다.
 
-[0;1mEXAMPLES[0m
+EXAMPLES
     1. 기본 사용 (main.c/main.cpp 자동 빌드):
         $ make build
 
@@ -158,7 +158,7 @@
 
     7. 벤치마크 도구와 연동 (바이너리 경로 출력):
 
-       [0;36m/usr/bin/time[0m - 실행 시간 및 리소스 측정
+       /usr/bin/time - 실행 시간 및 리소스 측정
          # 기본 시간 측정 (real/user/sys) - 짧은 별칭 사용
          /usr/bin/time $(make build s=leetcode/700.cpp m=binary)
 
@@ -173,7 +173,7 @@
          /usr/bin/time -f "%e,%M,%P" -o benchmark.log -a \
            $(make build MAIN_SRC=leetcode/450.cpp OUTPUT_MODE=binary)
 
-       [0;36mhyperfine[0m - 통계적 벤치마크 및 성능 비교
+       hyperfine - 통계적 벤치마크 및 성능 비교
          # 기본 벤치마크 (10회 반복)
          hyperfine '$(make build MAIN_SRC=leetcode/700.cpp OUTPUT_MODE=binary)'
 
@@ -205,7 +205,7 @@
          hyperfine --export-markdown results.md --export-json results.json \
            '$(make build MAIN_SRC=leetcode/700.cpp OUTPUT_MODE=binary)'
 
-       [0;36mperf[0m - CPU 프로파일링 및 성능 분석
+       perf - CPU 프로파일링 및 성능 분석
          # 기본 통계 (stat)
          perf stat $(make build MAIN_SRC=leetcode/236.cpp OUTPUT_MODE=binary)
 
@@ -219,7 +219,7 @@
          # 함수별 프로파일 (top)
          perf top $(make build MAIN_SRC=leetcode/437.cpp OUTPUT_MODE=binary)
 
-       [0;36mvalgrind[0m - 메모리 누수 및 오류 검사
+       valgrind - 메모리 누수 및 오류 검사
          # 메모리 누수 검사 (--leak-check)
          valgrind --leak-check=full \
            $(make build MAIN_SRC=leetcode/1448.cpp OUTPUT_MODE=binary)
@@ -236,7 +236,7 @@
          valgrind --tool=massif \
            $(make build MAIN_SRC=swea/5215/main.cpp OUTPUT_MODE=binary)
 
-       [0;36mgprof[0m - 함수별 실행 시간 프로파일링
+       gprof - 함수별 실행 시간 프로파일링
          # 프로파일링 활성화하여 빌드 (-pg 플래그 필요)
          CXXFLAGS="-pg" make build MAIN_SRC=leetcode/700.cpp
          ./build/leetcode/700  # 실행하여 gmon.out 생성
@@ -246,19 +246,18 @@
          hyperfine '$(make build MAIN_SRC=leetcode/700.cpp OUTPUT_MODE=binary)' \
                       '$(make build MAIN_SRC=leetcode/450.cpp OUTPUT_MODE=binary)'
 
-[0;1mEXIT STATUS[0m
+EXIT STATUS
     빌드 성공 시 0을 반환합니다.
     소스 파일을 찾을 수 없거나 컴파일/링킹 실패 시 1을 반환합니다.
     안전 마커가 없는 디렉토리에 clean 시도 시 1을 반환합니다.
 
-[0;1mNOTES[0m
+NOTES
     • VSCode, Zed 등의 tasks.json에서 이 Makefile을 활용할 수 있습니다.
     • 헤더 파일이 변경되면 관련 소스 파일이 자동으로 재컴파일됩니다.
     • OUTPUT_MODE=binary는 타 도구와 연동 시 유용합니다.
-    • [0;32m[안전 기능][0m clean 타겟은 마커 파일을 확인하여 실수로 중요한 디렉토리를 삭제하는 것을 방지합니다.
+    • [안전 기능] clean 타겟은 마커 파일을 확인하여 실수로 중요한 디렉토리를 삭제하는 것을 방지합니다.
     • 빌드 시 BUILD_ROOT에 .make_safe_marker 파일이 자동 생성됩니다.
 
-[0;1mSEE ALSO[0m
+SEE ALSO
     gcc(1), g++(1), clang(1), time(1), hyperfine(1), perf(1), valgrind(1)
-
 ```
