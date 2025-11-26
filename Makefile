@@ -370,7 +370,7 @@ SRCS ?=
 USER_SRC    := $(strip $(or $(firstword $(s)),$(SRC)))
 MAIN_SRC    := $(strip $(or $(firstword $(m)),$(MAIN_SRC)))
 MODE_LOG    := $(strip $(or $(firstword $(l)),$(MODE_LOG),normal))
-MODE_DEPS   := $(strip $(or $(firstword $(d)),$(MODE_DEPS),path))
+MODE_DEPS   := $(strip $(or $(firstword $(d)),$(MODE_DEPS),standalone))
 MODE_TARGET := $(strip $(or $(firstword $(t)),$(MODE_TARGET),executable))
 LIB_NAME    := $(strip $(or $(firstword $(n)),$(LIB_NAME)))
 STDIN       := $(strip $(or $(firstword $(i)),$(STDIN)))
@@ -476,12 +476,16 @@ ifeq ($(LOG_MODE),normal)
     LOG_CFG_TARGET              = @echo "$(ANSI_FG_BLUE)[정보] 빌드 대상: $(ANSI_FG_MAGENTA_BOLD_UNDERLINE)$(1)$(ANSI_RESET)"
     ERR_CFG_NO_MAIN             := "[설정 오류] 'main.c' 또는 'main.cpp'를 찾을 수 없습니다."
     WRN_CFG_INVALID_MODE        := "$(ANSI_FG_RED)[설정 오류] 지원하지 않는 출력 모드입니다.$(ANSI_RESET)"
-    ERR_CFG_FILE_NOT_FOUND      := "$(ANSI_FG_RED)[파일 오류] 지정된 소스 파일이 존재하지 않습니다.$(ANSI_RESET)"
-    ERR_CFG_FILE_INVALID_EXT    := "$(ANSI_FG_RED)[파일 오류] 지정된 파일이 C/C++ 소스가 아닙니다.$(ANSI_RESET)"
+    LOG_ERR_CFG_FILE_NOT_FOUND  = echo "$(ANSI_FG_RED)[파일 오류] 지정된 소스 파일이 존재하지 않습니다.$(ANSI_RESET): $(1)" >&2
+    LOG_ERR_CFG_FILE_INVALID_EXT = echo "$(ANSI_FG_RED)[파일 오류] 지정된 파일이 C/C++ 소스가 아닙니다.$(ANSI_RESET): $(1)" >&2
     WRN_CFG_FILE_NO_HEADER      := "$(ANSI_FG_YELLOW)[파일 경고] 필수 헤더 파일을 찾을 수 없습니다.$(ANSI_RESET)"
     WRN_CFG_EXPERIMENTAL        := "[설정 경고] 실험적 기능이 활성화되었습니다: 전이적 의존성 탐색 (느릴 수 있음)"
-    ERR_CFG_LIB_NO_NAME         := "[설정 오류] 라이브러리 빌드 시 결과물 이름(LIB_NAME=filename) 지정이 필수입니다."
-    ERR_RUN_NOT_EXE             := "[설정 오류] 라이브러리(shared/static) 모드에서 run 타겟은 불가능합니다."
+    LOG_ERR_CFG_LIB_NO_NAME     = echo "[설정 오류] 라이브러리 빌드 시 결과물 이름(LIB_NAME=filename) 지정이 필수입니다." >&2
+    LOG_ERR_CFG_LIB_NAME_WHITESPACE = echo "$(ANSI_FG_RED)[설정 오류] 라이브러리 이름(LIB_NAME)에는 공백을 포함할 수 없습니다.$(ANSI_RESET): '$(1)'" >&2
+    LOG_ERR_CFG_STDIN_NOT_FOUND = echo "$(ANSI_FG_RED)[설정 오류] 입력 파일(STDIN)을 찾을 수 없습니다.$(ANSI_RESET): $(1)" >&2
+    LOG_ERR_CFG_SRC_ROOT_NOT_FOUND = echo "$(ANSI_FG_RED)[설정 오류] SRC_ROOT 디렉토리가 존재하지 않습니다.$(ANSI_RESET): $(1)" >&2
+    MSG_CFG_LIB_DEPS_OVERRIDE   = $(ANSI_FG_YELLOW)[정보] 라이브러리 빌드 모드: MODE_DEPS가 '$(1)'에서 'all'로 자동 변경됩니다.$(ANSI_RESET)
+    LOG_ERR_RUN_NOT_EXE         = echo "[설정 오류] 라이브러리(shared/static) 모드에서 run 타겟은 불가능합니다." >&2
     LOG_CLN_MARKER_OK           = @echo "$(ANSI_FG_GREEN)[안전] 빌드 폴더의 빌드 마커 확인 완료. 삭제를 진행합니다.$(ANSI_RESET)"
     LOG_CLN_SUCCESS             = @echo "$(ANSI_FG_GREEN)[완료] 빌드 디렉토리 삭제: $(ANSI_FG_MAGENTA_BOLD_UNDERLINE)$(BUILD_ROOT)$(ANSI_RESET)"
     ERR_CLN_NO_MARKER           := $(ANSI_FG_RED)[안전 오류] 빌드 마커가 없습니다. 이 디렉토리는 이 Makefile로 생성되지 않았습니다.$(ANSI_RESET)
@@ -518,6 +522,10 @@ else ifeq ($(LOG_MODE),verbose)
     WRN_CFG_FILE_NO_HEADER      := [FILE ERROR] Required header file not found.
     WRN_CFG_EXPERIMENTAL        := [CONFIG WARNING] Experimental feature enabled: Transitive dependency discovery (may be slow).
     ERR_CFG_LIB_NO_NAME         := "[CONFIG ERROR] Library build requires a name (n=filename)."
+    ERR_CFG_LIB_NAME_WHITESPACE := [CONFIG ERROR] Library name cannot contain whitespace.
+    ERR_CFG_STDIN_NOT_FOUND     := [CONFIG ERROR] Input file (STDIN) not found.
+    ERR_CFG_SRC_ROOT_NOT_FOUND  := [CONFIG ERROR] SRC_ROOT directory does not exist.
+    MSG_CFG_LIB_DEPS_OVERRIDE   = [INFO] Library build mode: MODE_DEPS changed from '$(1)' to 'all'.
     LOG_CLN_SUCCESS             = @echo "[INFO] Cleaning build directory: $(BUILD_ROOT)"
     LOG_CLN_MARKER_OK           = @echo "[SAFE] Build marker verified. Proceeding with deletion."
     ERR_CLN_NO_MARKER           := [SAFETY ERROR] Build marker not found. This directory was not created by this Makefile.
@@ -555,6 +563,10 @@ else ifeq ($(LOG_MODE),silent)
     WRN_CFG_FILE_NO_HEADER      := File error: Header file not found.
     WRN_CFG_EXPERIMENTAL        := Config warning: Experimental feature enabled.
     ERR_CFG_LIB_NO_NAME         := Config error: Missing library name.
+    ERR_CFG_LIB_NAME_WHITESPACE := Config error: Library name has whitespace.
+    ERR_CFG_STDIN_NOT_FOUND     := Config error: Input file not found.
+    ERR_CFG_SRC_ROOT_NOT_FOUND  := Config error: SRC_ROOT not found.
+    MSG_CFG_LIB_DEPS_OVERRIDE   = ""
     LOG_CLN_SUCCESS             = @:
     LOG_CLN_MARKER_OK           = @:
     ERR_CLN_NO_MARKER           := Safety error: No build marker found.
@@ -592,6 +604,10 @@ else ifeq ($(LOG_MODE),binary)
     WRN_CFG_FILE_NO_HEADER      := [FILE] No header
     WRN_CFG_EXPERIMENTAL        := [CONFIG] Experimental feature enabled.
     ERR_CFG_LIB_NO_NAME         := [CONFIG] No lib name
+    ERR_CFG_LIB_NAME_WHITESPACE := [CONFIG] Lib name whitespace
+    ERR_CFG_STDIN_NOT_FOUND     := [CONFIG] No input file
+    ERR_CFG_SRC_ROOT_NOT_FOUND  := [CONFIG] No SRC_ROOT
+    MSG_CFG_LIB_DEPS_OVERRIDE   = ""
     LOG_CLN_SUCCESS             = @:
     LOG_CLN_MARKER_OK           = @:
     ERR_CLN_NO_MARKER           := [SAFETY] No marker
@@ -629,6 +645,10 @@ else ifeq ($(LOG_MODE),raw)
     WRN_CFG_FILE_NO_HEADER      :=
     WRN_CFG_EXPERIMENTAL        :=
     ERR_CFG_LIB_NO_NAME         :=
+    ERR_CFG_LIB_NAME_WHITESPACE :=
+    ERR_CFG_STDIN_NOT_FOUND     :=
+    ERR_CFG_SRC_ROOT_NOT_FOUND  :=
+    MSG_CFG_LIB_DEPS_OVERRIDE   =
     LOG_CLN_SUCCESS             = @:
     LOG_CLN_MARKER_OK           = @:
     ERR_CLN_NO_MARKER           :=
@@ -652,31 +672,106 @@ else ifeq ($(LOG_MODE),raw)
     FMT_WRN                     = $(1)
     LOG_BUILD_FINISH            := @:
 endif
+
 # ==============================================================================
-# 섹션 5: 조건부 로직 및 환경 감지 (Conditional Logic - Build Targets Only)
+# 섹션 5: 사전 유효성 검사 및 제약 조건 확정 (Pre-flight Validation)
 # ==============================================================================
-# 동작: 빌드 관련 타겟이 호출될 때만 실행되는 헤비한 연산들
+# 동작: 무거운 쉘 연산 없이 변수와 파일 존재 여부만으로 논리적 모순 즉시 차단
+# 조건: 항상 실행됨 (Guard 없음) - 단, make 자체 함수(filter, wildcard)만 사용해 속도 저하 없음
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# 5.1 기본 경로 유효성 검사
+# ------------------------------------------------------------------------------
+# 설명: 소스 루트 디렉토리가 실제로 존재하는지 확인
+ifeq ($(wildcard $(SRC_ROOT)),)
+    _ERR := $(shell $(call LOG_ERR_CFG_SRC_ROOT_NOT_FOUND,$(SRC_ROOT)))
+    $(error )
+endif
+
+# ------------------------------------------------------------------------------
+# 5.2 실행(Run) 타겟 관련 유효성 검사
+# ------------------------------------------------------------------------------
+# 설명: run 관련 타겟이 포함된 경우에만 검사
+RUN_GOALS := run build-run clean-build-run
+ifneq ($(filter $(RUN_GOALS),$(MAKECMDGOALS)),)
+
+    # 1. 모드 호환성: run은 executable 모드에서만 가능
+    ifneq ($(MODE_TARGET),executable)
+        _ERR := $(shell $(call LOG_ERR_RUN_NOT_EXE))
+        $(error )
+    endif
+
+    # 2. 입력 파일 존재 여부: i=input.txt 지정 시 실제 파일 확인
+    ifneq ($(STDIN),)
+        ifeq ($(wildcard $(STDIN)),)
+            _ERR := $(shell $(call LOG_ERR_CFG_STDIN_NOT_FOUND,$(STDIN)))
+            $(error )
+        endif
+    endif
+endif
+
+# ------------------------------------------------------------------------------
+# 5.3 라이브러리 모드 무결성 검사
+# ------------------------------------------------------------------------------
+# 설명: shared/static 모드일 때 필수 조건 검사 (타겟 무관하게 설정이 잘못되면 에러)
+ifneq ($(filter shared static,$(MODE_TARGET)),)
+    
+    # 1. 라이브러리 이름 필수
+    ifeq ($(LIB_NAME),)
+        _ERR := $(shell $(call LOG_ERR_CFG_LIB_NO_NAME))
+        $(error )
+    endif
+
+    # 2. 이름에 공백 포함 여부 확인 (make는 공백 처리가 취약함)
+    ifneq ($(words $(LIB_NAME)),1)
+        _ERR := $(shell $(call LOG_ERR_CFG_LIB_NAME_WHITESPACE,$(LIB_NAME)))
+        $(error )
+    endif
+
+    # 3. 의존성 모드 강제 설정 (사용자 실수 방지)
+    ifneq ($(MODE_DEPS),all)
+        _LIB_DEPS_PREV := $(MODE_DEPS)
+        override MODE_DEPS := all
+        _MSG_LIB_DEPS := $(shell printf "$(call MSG_CFG_LIB_DEPS_OVERRIDE,$(_LIB_DEPS_PREV))\n" >&2)
+    endif
+endif
+
+# ------------------------------------------------------------------------------
+# 5.4 수동 입력 소스 파일 검사
+# ------------------------------------------------------------------------------
+# 설명: 사용자가 MAIN_SRC나 SRCS를 직접 입력했을 때 확장자 유효성 검사
+ifneq ($(MAIN_SRC),)
+    # 확장자 추출 및 검사
+    _MAIN_SRC_EXT := $(suffix $(MAIN_SRC))
+    ifeq ($(filter $(_MAIN_SRC_EXT),$(ALL_EXTS)),)
+        _ERR := $(shell $(call LOG_ERR_CFG_FILE_INVALID_EXT,$(MAIN_SRC)))
+        $(error )
+    endif
+    
+    # 파일 존재 여부 (wildcard 사용)
+    # 주의: 아직 생성되지 않은 파일일 수도 있으므로 'clean' 타겟이 아닐 때만 검사
+    ifeq ($(filter clean clean-build clean-build-run,$(MAKECMDGOALS)),)
+        ifeq ($(wildcard $(MAIN_SRC)),)
+            _ERR := $(shell $(call LOG_ERR_CFG_FILE_NOT_FOUND,$(MAIN_SRC)))
+            $(error )
+        endif
+    endif
+endif
+
+# ==============================================================================
+# 섹션 6: 조건부 로직 및 환경 감지 (Conditional Logic - Heavy Operations)
+# ==============================================================================
+# 동작: 빌드 관련 타겟이 호출될 때만 실행되는 무거운 연산들 (find, shell, pkg-config)
 # 조건: $(MAKECMDGOALS)에 TARGET_GOALS가 포함될 때만 실행
 # 효과: make help, make clean 실행 시 0.1초 이하로 즉시 반응
+# 특징: 섹션 5에서 논리적 검증이 완료되었으므로, 여기서는 실제 파일 탐색과 연산에만 집중
 # ==============================================================================
-
 TARGET_GOALS := build run build-run clean-build clean-build-run list-headers
-
 ifneq ($(filter $(TARGET_GOALS),$(MAKECMDGOALS)),)
 
     # --------------------------------------------------------------------------
-    # 5.0 실행 불가능한 조합 사전 차단 (Fail Fast)
-    # --------------------------------------------------------------------------
-    # 설명: 사용자가 run 관련 타겟을 요청했으나, TARGET_TYPE이 executable이 아닌 경우 즉시 중단
-    RUN_GOALS := run build-run clean-build-run
-    ifneq ($(filter $(RUN_GOALS),$(MAKECMDGOALS)),)
-        ifneq ($(MODE_TARGET),executable)
-            $(error $(call FMT_ERR,$(ERR_RUN_NOT_EXE)))
-        endif
-    endif
-
-    # --------------------------------------------------------------------------
-    # 5.1 OS 감지 및 컴파일러 자동 선택
+    # 6.1 OS 감지 및 컴파일러 자동 선택
     # --------------------------------------------------------------------------
     _UNAME_S := $(shell uname -s)
     ifeq ($(_UNAME_S),Darwin)
@@ -691,7 +786,7 @@ ifneq ($(filter $(TARGET_GOALS),$(MAKECMDGOALS)),)
     endif
 
     # --------------------------------------------------------------------------
-    # 5.2 pkg-config 처리
+    # 6.2 pkg-config 처리
     # --------------------------------------------------------------------------
     ifneq ($(PKGS),)
         HAS_PKG_CONFIG := $(shell which pkg-config 2>/dev/null)
@@ -717,23 +812,24 @@ ifneq ($(filter $(TARGET_GOALS),$(MAKECMDGOALS)),)
     endif
 
     # --------------------------------------------------------------------------
-    # 5.3 소스 파일 탐색 (지연 평가)
+    # 6.3 소스 파일 탐색 (지연 평가)
     # --------------------------------------------------------------------------
     _PROJECT_FILE_POOL = $(shell find $(SRC_ROOT) -type f \( $(FIND_FLAGS) -false \) -not -path '$(BUILD_ROOT)/*' | sed 's|^./||' | sort -u)
 
     # --------------------------------------------------------------------------
-    # 5.4 유틸리티 함수 정의
+    # 6.4 유틸리티 함수 정의
     # --------------------------------------------------------------------------
     IS_C = $(if $(filter $(suffix $(1)),$(EXT_C)),1,)
     IS_CPP = $(if $(filter $(suffix $(1)),$(EXT_CPP)),1,)
     IS_SRC = $(or $(call IS_C,$(1)),$(call IS_CPP,$(1)))
 
     # --------------------------------------------------------------------------
-    # 5.5 실행 파일 빌드 모드
+    # 6.5 실행 파일 빌드 모드 (Executable Build Mode)
     # --------------------------------------------------------------------------
     ifeq ($(MODE_TARGET),executable)
         # 1. 메인 소스 파일 결정
         ifeq ($(MAIN_SRC),)
+            # [자동 탐색] MAIN_SRC가 없을 때만 find 결과를 뒤짐
             MAIN_SRC_AUTO := $(firstword $(filter %main.cpp %main.c,$(_PROJECT_FILE_POOL)))
             ifeq ($(MAIN_SRC_AUTO),)
                 $(error $(call FMT_ERR,$(ERR_CFG_NO_MAIN)))
@@ -741,18 +837,12 @@ ifneq ($(filter $(TARGET_GOALS),$(MAKECMDGOALS)),)
             _SRC_MAIN_NORM := $(MAIN_SRC_AUTO)
             CMD_LOG_MODE  := $(LOG_CFG_AUTO)
         else
+            # [수동 지정] 섹션 5에서 파일 존재/확장자 검증 완료됨. 경로 정규화만 수행.
             _SRC_MAIN_NORM := $(shell echo $(MAIN_SRC) | sed 's|^./||')
-            ifeq ($(wildcard $(_SRC_MAIN_NORM)),)
-                $(error $(call FMT_ERR,$(ERR_CFG_FILE_NOT_FOUND): $(_SRC_MAIN_NORM)))
-            endif
-            ifneq ($(call IS_SRC,$(_SRC_MAIN_NORM)),1)
-                $(error $(call FMT_ERR,$(ERR_CFG_FILE_INVALID_EXT): $(_SRC_MAIN_NORM)))
-            endif
             CMD_LOG_MODE := $(call LOG_CFG_MANUAL,$(_SRC_MAIN_NORM))
         endif
 
         # 2. 사용자 추가 소스 정규화 (USER_SRCS -> _USER_SRCS_NORM)
-        # 사용자가 make SRCS="a.c b.c" 로 입력했거나 파일에 SRCS를 정의한 경우 처리
         _USER_SRCS_NORM :=
         ifneq ($(USER_SRCS),)
             _USER_SRCS_NORM := $(shell echo $(USER_SRCS) | sed 's|^./||')
@@ -773,12 +863,11 @@ ifneq ($(filter $(TARGET_GOALS),$(MAKECMDGOALS)),)
         EXTRACT_HEADERS = $(sort $(filter $(foreach ext,$(EXT_HDR),%$(ext)),$(subst \, ,$(subst :, ,$(1)))))
 
         # 6. [Step 1] 의존성 모드별 자동 탐색 결과(_DISCOVERED_SRCS) 결정
-        # 주의: 여기서는 MAIN_SRC 만을 기준으로 탐색합니다. (USER_SRCS는 제외)
         ifeq ($(MODE_DEPS),standalone)
             _DISCOVERED_SRCS := $(_SRC_MAIN_NORM)
 
         else ifeq ($(MODE_DEPS),path)
-            # path 모드: MAIN_SRC 만 큐에 넣고 시작
+            # path 모드: MAIN_SRC를 큐에 넣고 전이적 의존성 탐색 시작
             _DISCOVERED_SRCS := $(shell \
                 start_file="$(_SRC_MAIN_NORM)"; \
                 found_srcs="$$start_file"; \
@@ -811,7 +900,7 @@ ifneq ($(filter $(TARGET_GOALS),$(MAKECMDGOALS)),)
                 echo $$found_srcs)
 
         else ifeq ($(MODE_DEPS),file)
-            # file 모드: MAIN_SRC 만 큐에 넣고 시작
+            # file 모드: MAIN_SRC를 큐에 넣고 파일명 기반 전이적 의존성 탐색 시작
             _DISCOVERED_SRCS := $(shell \
                 all_srcs="$(_PROJECT_FILE_POOL)"; \
                 start_file="$(_SRC_MAIN_NORM)"; \
@@ -848,12 +937,11 @@ ifneq ($(filter $(TARGET_GOALS),$(MAKECMDGOALS)),)
         endif
 
         # 7. 최종 소스 파일 병합 (_FINAL_SRCS)
-        # 자동 탐색된 파일들과 사용자가 수동으로 지정한 파일들을 합칩니다.
-        # sort 함수가 중복을 제거해줍니다.
+        # 자동 탐색된 파일들과 사용자가 수동 지정한 파일들을 합침 (sort가 중복 제거)
         _FINAL_SRCS := $(sort $(_DISCOVERED_SRCS) $(_USER_SRCS_NORM))
 
         # 8. [Step 2] 최종 HDRS 추출 (일괄 처리)
-        # 확정된 모든 소스 파일(_FINAL_SRCS)을 대상으로 헤더 의존성을 한 번에 뽑아냅니다.
+        # 확정된 모든 소스 파일(_FINAL_SRCS)을 대상으로 헤더 의존성을 한 번에 추출
         DEPS_ALL := $(shell $(PREPROC) -MM $(_FINAL_SRCS) 2>/dev/null)
         HDRS := $(call EXTRACT_HEADERS,$(DEPS_ALL))
 
@@ -861,15 +949,12 @@ ifneq ($(filter $(TARGET_GOALS),$(MAKECMDGOALS)),)
         $(foreach hdr,$(HDRS),$(if $(wildcard $(hdr)),,$(warning $(call FMT_WRN,$(WRN_CFG_FILE_NO_HEADER)): $(hdr))))
 
     # --------------------------------------------------------------------------
-    # 5.6 라이브러리 빌드 모드
+    # 6.6 라이브러리 빌드 모드 (Library Build Mode)
     # --------------------------------------------------------------------------
     else
-        ifeq ($(LIB_NAME),)
-            $(error $(call FMT_ERR,$(ERR_CFG_LIB_NO_NAME)))
-        endif
-        override MODE_DEPS := all
+        # [참고] LIB_NAME 검증, 공백 검사, MODE_DEPS 강제 설정은 섹션 5에서 이미 완료됨.
         
-        # 사용자가 지정한 파일(USER_SRCS)이 있으면 그것을 우선 사용, 없으면 전체 사용
+        # 사용자가 지정한 파일(USER_SRCS)이 있으면 우선 사용, 없으면 전체 사용
         ifneq ($(USER_SRCS),)
              _FINAL_SRCS := $(USER_SRCS)
         else
@@ -886,12 +971,12 @@ ifneq ($(filter $(TARGET_GOALS),$(MAKECMDGOALS)),)
     endif
 
     # --------------------------------------------------------------------------
-    # 5.7 오브젝트 파일 경로 생성
+    # 6.7 오브젝트 파일 경로 생성
     # --------------------------------------------------------------------------
     _OBJS_TO_LINK := $(addsuffix .o,$(addprefix $(BUILD_ROOT)/,$(basename $(_FINAL_SRCS))))
 
     # --------------------------------------------------------------------------
-    # 5.8 링커 자동 선택
+    # 6.8 링커 자동 선택
     # --------------------------------------------------------------------------
     IS_CPP_PROJECT := $(filter $(foreach ext,$(EXT_CPP),%$(ext)),$(_FINAL_SRCS))
     ifeq ($(IS_CPP_PROJECT),)
@@ -901,7 +986,7 @@ ifneq ($(filter $(TARGET_GOALS),$(MAKECMDGOALS)),)
     endif
 
     # --------------------------------------------------------------------------
-    # 5.9 링크 명령 결정
+    # 6.9 링크 명령 결정
     # --------------------------------------------------------------------------
     ifeq ($(MODE_TARGET),static)
         LINK_CMD = ar rcs $(_TARGET) $(_OBJS_TO_LINK)
@@ -914,7 +999,7 @@ ifneq ($(filter $(TARGET_GOALS),$(MAKECMDGOALS)),)
 endif
 
 # ==============================================================================
-# 섹션 6: 타겟 및 규칙 (Targets & Rules)
+# 섹션 7: 타겟 및 규칙 (Targets & Rules)
 # ==============================================================================
 # 동작: 사용자가 호출하는 실제 빌드 작업 정의
 # 조건: .PHONY 선언으로 항상 실행되도록 설정
@@ -925,7 +1010,7 @@ endif
 .PHONY: _internal_build _internal_run _internal_clean
 
 # ------------------------------------------------------------------------------
-# 6.1 help 타겟
+# 7.1 help 타겟
 # ------------------------------------------------------------------------------
 help:
 	@echo ""
@@ -1058,7 +1143,7 @@ help:
 	@echo ""
 
 # ------------------------------------------------------------------------------
-# 6.2
+# 7.2
 # ------------------------------------------------------------------------------
 _internal_print_config:
 	@echo "====== Build Configuration ======"
@@ -1086,7 +1171,7 @@ _internal_print_config:
 	@echo "================================="
 
 # ------------------------------------------------------------------------------
-# 6.2 clean 타겟 (독립적 실행)
+# 7.3 clean 타겟 (독립적 실행)
 # ------------------------------------------------------------------------------
 _internal_clean:
 	$(if $(and $(wildcard $(BUILD_ROOT)),$(filter-out $(wildcard $(BUILD_ROOT)/.make_safe_marker),$(wildcard $(BUILD_ROOT)/.make_safe_marker))), \
@@ -1098,7 +1183,7 @@ _internal_clean:
 clean: _internal_clean
 
 # ------------------------------------------------------------------------------
-# 6.3 빌드 준비 타겟
+# 7.4 빌드 준비 타겟
 # ------------------------------------------------------------------------------
 pre-build-setup: $(if $(filter-out 0,$(CONFIG_PRINT)),_internal_print_config)
 	@if [ ! -d "$(BUILD_ROOT)" ]; then \
@@ -1114,7 +1199,7 @@ pre-build-setup: $(if $(filter-out 0,$(CONFIG_PRINT)),_internal_print_config)
 	$(CMD_LOG_MODE)
 
 # ------------------------------------------------------------------------------
-# 6.4 주요 빌드 타겟
+# 7.5 주요 빌드 타겟
 # ------------------------------------------------------------------------------
 .NOTPARALLEL: build-run clean-build clean-build-run
 
@@ -1139,7 +1224,7 @@ clean-build-run: _internal_clean _internal_build _internal_run
 list-headers:
 	@echo $(HDRS)
 # ------------------------------------------------------------------------------
-# 6.5 링킹 규칙
+# 7.6 링킹 규칙
 # ------------------------------------------------------------------------------
 $(_TARGET): $(_OBJS_TO_LINK) | pre-build-setup
 	$(if $(wildcard $(dir $@)),,$(Q)$(MKDIR_P) $(dir $@))
@@ -1148,7 +1233,7 @@ $(_TARGET): $(_OBJS_TO_LINK) | pre-build-setup
 	$(call LOG_BLD_SUCCESS,$@)
 
 # ------------------------------------------------------------------------------
-# 6.6 컴파일 규칙 (패턴 규칙 생성 매크로)
+# 7.7 컴파일 규칙 (패턴 규칙 생성 매크로)
 # ------------------------------------------------------------------------------
 define RULE_CPP
 $(BUILD_ROOT)/%.o: %$(1) | pre-build-setup
@@ -1169,7 +1254,7 @@ $(foreach ext,$(EXT_CPP),$(eval $(call RULE_CPP,$(ext))))
 $(foreach ext,$(EXT_C),$(eval $(call RULE_C,$(ext))))
 
 # ------------------------------------------------------------------------------
-# 6.7 의존성 파일 포함
+# 7.8 의존성 파일 포함
 # ------------------------------------------------------------------------------
 ifneq ($(_OBJS_TO_LINK),)
     -include $(_OBJS_TO_LINK:.o=.d)
