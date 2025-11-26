@@ -59,6 +59,12 @@ SRC_ROOT     ?= $(PROJECT_ROOT)
 BUILD_ROOT   ?= $(PROJECT_ROOT)/build
 
 # ------------------------------------------------------------------------------
+# 2.1.1 설정 변수 출력 플래그
+# ------------------------------------------------------------------------------
+# CONFIG_PRINT=1 설정 시 빌드 설정 정보 출력
+CONFIG_PRINT ?= 0
+
+# ------------------------------------------------------------------------------
 # 2.2 컴파일러 설정 (조건부 실행 블록으로 이동 예정)
 # ------------------------------------------------------------------------------
 # 주의: 이 섹션의 uname 호출은 나중에 조건부 블록으로 이동될 예정
@@ -88,14 +94,14 @@ CXXFLAGS ?=
 
 # --- C++ 표준 버전 선택 (하나만 주석 해제) ---
 # CXXFLAGS += -std=c++11
-CXXFLAGS += -std=c++17 
+CXXFLAGS += -std=c++17
 # CXXFLAGS += -std=c++20
 # CXXFLAGS += -std=c++23
 
 # --- 디버그 모드 (기본) ---
-CXXFLAGS += -O0                               # 최적화 비활성화
-CXXFLAGS += -g                                # 디버그 심볼 생성
-CXXFLAGS += -g3                               # 최대 디버그 정보 (매크로 포함)
+# CXXFLAGS += -O0                               # 최적화 비활성화
+# CXXFLAGS += -g                                # 디버그 심볼 생성
+# CXXFLAGS += -g3                               # 최대 디버그 정보 (매크로 포함)
 CXXFLAGS += -Wall                             # 기본 경고 활성화
 # CXXFLAGS += -Wextra                           # 추가 경고 활성화
 # CXXFLAGS += -fsanitize=address              # 메모리 오류 검출 (AddressSanitizer)
@@ -168,9 +174,9 @@ CFLAGS += -std=c11                            # C11 표준
 # CFLAGS += -std=c2x                          # C23 표준 (실험적)
 
 # --- 디버그 모드 (기본) ---
-CFLAGS += -O0                                 # 최적화 비활성화
-CFLAGS += -g                                  # 디버그 심볼 생성
-CFLAGS += -g3                                 # 최대 디버그 정보
+# CFLAGS += -O0                                 # 최적화 비활성화
+# CFLAGS += -g                                  # 디버그 심볼 생성
+# CFLAGS += -g3                                 # 최대 디버그 정보
 CFLAGS += -Wall                               # 기본 경고 활성화
 # CFLAGS += -Wextra                             # 추가 경고 활성화
 # CFLAGS += -fsanitize=address                # 메모리 오류 검출
@@ -325,10 +331,31 @@ LDLIBS ?=
 # CFLAGS   += -fcf-protection                 # 제어 흐름 보호
 # CXXFLAGS += -fcf-protection                 # 제어 흐름 보호
 
+# ==============================================================================
+# 주석 제거 처리 (Remove Comments from Flag Variables)
+# ==============================================================================
+# 동작: 변수에 포함된 인라인 주석(#로 시작하는 부분)과 연속 공백을 제거
+# 조건: CPPFLAGS, CXXFLAGS, CFLAGS, LDFLAGS, LDLIBS에 적용
+# 이유: 주석이 포함된 변수가 컴파일러/링커에 전달되는 것을 방지
+# ==============================================================================
+H := \#
+CPPFLAGS := $(strip $(shell echo '$(CPPFLAGS)' | sed 's/[[:space:]]*$(H)[^$(H)]*//g'))
+CXXFLAGS := $(strip $(shell echo '$(CXXFLAGS)' | sed 's/[[:space:]]*$(H)[^$(H)]*//g'))
+CFLAGS   := $(strip $(shell echo '$(CFLAGS)' | sed 's/[[:space:]]*$(H)[^$(H)]*//g'))
+LDFLAGS  := $(strip $(shell echo '$(LDFLAGS)' | sed 's/[[:space:]]*$(H)[^$(H)]*//g'))
+LDLIBS   := $(strip $(shell echo '$(LDLIBS)' | sed 's/[[:space:]]*$(H)[^$(H)]*//g'))
+
 # ------------------------------------------------------------------------------
 # 2.4 pkg-config 라이브러리 설정
 # ------------------------------------------------------------------------------
 PKGS ?=
+
+# ------------------------------------------------------------------------------
+# 2.5 추가 소스 파일 수동 지정 (Manual Source Files)
+# ------------------------------------------------------------------------------
+# 설명: 의존성 탐색과 관계없이 강제로 포함할 소스 파일들
+# 사용법: 파일 내에 직접 적거나, CLI에서 SRCS="foo.cpp bar.c" 형태로 전달
+SRCS ?=
 
 # ==============================================================================
 # 섹션 3: 입력 변수 처리 및 정규화 (Input Processing)
@@ -340,27 +367,33 @@ PKGS ?=
 # ------------------------------------------------------------------------------
 # 3.1 변수 별칭 매핑 (CLI Alias Mapping)
 # ------------------------------------------------------------------------------
-MAIN_SRC    := $(strip $(or $(MAIN_SRC),$(firstword $(s))))
-MODE_LOG := $(strip $(or $(MODE_LOG),$(firstword $(ml)),normal))
-STDIN       := $(strip $(or $(STDIN),$(firstword $(i))))
-STDOUT      := $(strip $(or $(STDOUT),$(firstword $(o))))
-STDERR      := $(strip $(or $(STDERR),$(firstword $(e))))
-ARGS        := $(strip $(or $(ARGS),$(a)))
-LIB_NAME    := $(strip $(or $(LIB_NAME),$(firstword $(n))))
-MODE_TARGET := $(strip $(or $(MODE_TARGET),$(firstword $(mt)),executable))
+USER_SRC    := $(strip $(or $(firstword $(s)),$(SRC)))
+MAIN_SRC    := $(strip $(or $(firstword $(m)),$(MAIN_SRC)))
+MODE_LOG    := $(strip $(or $(firstword $(l)),$(MODE_LOG),normal))
+MODE_DEPS   := $(strip $(or $(firstword $(d)),$(MODE_DEPS),path))
+MODE_TARGET := $(strip $(or $(firstword $(t)),$(MODE_TARGET),executable))
+LIB_NAME    := $(strip $(or $(firstword $(n)),$(LIB_NAME)))
+STDIN       := $(strip $(or $(firstword $(i)),$(STDIN)))
+STDOUT      := $(strip $(or $(firstword $(o)),$(STDOUT)))
+STDERR      := $(strip $(or $(firstword $(e)),$(STDERR)))
+ARGS        := $(strip $(or $(firstword $(a)),$(ARGS)))
 
 # ------------------------------------------------------------------------------
 # 3.2 의존성 모드 별칭 정규화
 # ------------------------------------------------------------------------------
-MODE_DEPS := $(strip $(or $(MODE_DEPS),$(firstword $(md)),path))
 override MODE_DEPS := $(strip \
+  $(if $(filter s,$(MODE_DEPS)),standalone,\
   $(if $(filter p,$(MODE_DEPS)),path,\
   $(if $(filter f,$(MODE_DEPS)),file,\
-  $(if $(filter s,$(MODE_DEPS)),standalone,\
   $(if $(filter a,$(MODE_DEPS)),all,\
-  $(if $(filter tp,$(MODE_DEPS)),transitive_path,\
-  $(if $(filter tf,$(MODE_DEPS)),transitive_file,\
-  $(MODE_DEPS))))))))
+  $(MODE_DEPS))))))
+MODE_DEPS := $(strip $(MODE_DEPS))
+ifneq ($(filter $(MODE_DEPS), path file standalone all),)
+    MODE_DEPS := $(MODE_DEPS)
+else
+    $(warning [경고] 지원하지 않는 의존성 모드: '$(MODE_DEPS)' → 기본값 'path'로 설정)
+    MODE_DEPS := path
+endif
 
 # ------------------------------------------------------------------------------
 # 3.3 출력 모드 값 정규화
@@ -373,15 +406,12 @@ override MODE_LOG := $(strip \
   $(if $(filter r,$(MODE_LOG)),raw,\
   $(MODE_LOG)))))))
 
-# ------------------------------------------------------------------------------
-# 3.4 출력 모드 검증 및 최종 확정
-# ------------------------------------------------------------------------------
 MODE_LOG := $(strip $(MODE_LOG))
 ifneq ($(filter $(MODE_LOG), normal silent verbose binary raw),)
-    FINAL_LOG_MODE := $(MODE_LOG)
+    LOG_MODE := $(MODE_LOG)
 else
     $(warning [경고] 지원하지 않는 출력 모드: '$(MODE_LOG)' → 기본값 'normal'로 설정)
-    FINAL_LOG_MODE := normal
+    LOG_MODE := normal
 endif
 
 # ------------------------------------------------------------------------------
@@ -414,7 +444,8 @@ override MODE_TARGET := $(strip \
 # 3.7 라이브러리 모드 기본 설정
 # ------------------------------------------------------------------------------
 ifneq ($(MODE_TARGET),executable)
-    CPPFLAGS += -fPIC
+    CFLAGS   += -fPIC
+    CXXFLAGS += -fPIC
 endif
 
 # ------------------------------------------------------------------------------
@@ -432,24 +463,24 @@ endif
 # ==============================================================================
 # 섹션 4: 로깅 시스템 (Logging System)
 # ==============================================================================
-# 동작: FINAL_LOG_MODE에 따라 로그 매크로 정의
+# 동작: LOG_MODE에 따라 로그 매크로 정의
 # 조건: 출력 모드별로 조건부 분기
 # ==============================================================================
 
 # ------------------------------------------------------------------------------
 # 4.1 모드: normal (일반 모드)
 # ------------------------------------------------------------------------------
-ifeq ($(FINAL_LOG_MODE),normal)
+ifeq ($(LOG_MODE),normal)
     LOG_CFG_AUTO                = @echo "$(ANSI_FG_BLUE)[정보] MAIN_SRC 미지정. 프로젝트 내 main 파일을 자동 탐색합니다.$(ANSI_RESET)"
     LOG_CFG_MANUAL              = @echo "$(ANSI_FG_BLUE)[정보] 수동 모드. 다음 파일을 빌드합니다: $(ANSI_FG_MAGENTA_BOLD_UNDERLINE)$(1)$(ANSI_RESET)"
     LOG_CFG_TARGET              = @echo "$(ANSI_FG_BLUE)[정보] 빌드 대상: $(ANSI_FG_MAGENTA_BOLD_UNDERLINE)$(1)$(ANSI_RESET)"
-    ERR_CFG_NO_MAIN             := "$(ANSI_FG_RED)[설정 오류] 'main.c' 또는 'main.cpp'를 찾을 수 없습니다.$(ANSI_RESET)"
+    ERR_CFG_NO_MAIN             := "[설정 오류] 'main.c' 또는 'main.cpp'를 찾을 수 없습니다."
     WRN_CFG_INVALID_MODE        := "$(ANSI_FG_RED)[설정 오류] 지원하지 않는 출력 모드입니다.$(ANSI_RESET)"
     ERR_CFG_FILE_NOT_FOUND      := "$(ANSI_FG_RED)[파일 오류] 지정된 소스 파일이 존재하지 않습니다.$(ANSI_RESET)"
     ERR_CFG_FILE_INVALID_EXT    := "$(ANSI_FG_RED)[파일 오류] 지정된 파일이 C/C++ 소스가 아닙니다.$(ANSI_RESET)"
     WRN_CFG_FILE_NO_HEADER      := "$(ANSI_FG_YELLOW)[파일 경고] 필수 헤더 파일을 찾을 수 없습니다.$(ANSI_RESET)"
     WRN_CFG_EXPERIMENTAL        := "[설정 경고] 실험적 기능이 활성화되었습니다: 전이적 의존성 탐색 (느릴 수 있음)"
-    ERR_CFG_LIB_NO_NAME         := "$(ANSI_FG_RED)[설정 오류] 라이브러리 빌드 시 결과물 이름(LIB_NAME=filename) 지정이 필수입니다.$(ANSI_RESET)"
+    ERR_CFG_LIB_NO_NAME         := "[설정 오류] 라이브러리 빌드 시 결과물 이름(LIB_NAME=filename) 지정이 필수입니다."
     ERR_RUN_NOT_EXE             := "[설정 오류] 라이브러리(shared/static) 모드에서 run 타겟은 불가능합니다."
     LOG_CLN_MARKER_OK           = @echo "$(ANSI_FG_GREEN)[안전] 빌드 폴더의 빌드 마커 확인 완료. 삭제를 진행합니다.$(ANSI_RESET)"
     LOG_CLN_SUCCESS             = @echo "$(ANSI_FG_GREEN)[완료] 빌드 디렉토리 삭제: $(ANSI_FG_MAGENTA_BOLD_UNDERLINE)$(BUILD_ROOT)$(ANSI_RESET)"
@@ -476,7 +507,7 @@ ifeq ($(FINAL_LOG_MODE),normal)
 # ------------------------------------------------------------------------------
 # 4.2 모드: verbose (상세 모드)
 # ------------------------------------------------------------------------------
-else ifeq ($(FINAL_LOG_MODE),verbose)
+else ifeq ($(LOG_MODE),verbose)
     LOG_CFG_AUTO                = @echo "[INFO] Auto-detecting main source file."
     LOG_CFG_MANUAL              = @echo "[INFO] Manual mode selected. File: $(1)"
     LOG_CFG_TARGET              = @echo "[INFO] Target binary: $(1)"
@@ -505,7 +536,7 @@ else ifeq ($(FINAL_LOG_MODE),verbose)
     ERR_RUN_NO_BIN              := [RUNTIME ERROR] Executable not found
     ERR_RUN_FAIL                := [RUNTIME ERROR] Runtime error occurred during program execution.
     Q                           :=
-    ABORT_ON_ERR                =
+    ABORT_ON_ERR                = || ( echo "$(1)" >&2; exit 1 )
     FMT_ERR                     = $(1)
     FMT_WRN                     = $(1)
     LOG_BUILD_FINISH            := @:
@@ -513,7 +544,7 @@ else ifeq ($(FINAL_LOG_MODE),verbose)
 # ------------------------------------------------------------------------------
 # 4.3 모드: silent (조용한 모드)
 # ------------------------------------------------------------------------------
-else ifeq ($(FINAL_LOG_MODE),silent)
+else ifeq ($(LOG_MODE),silent)
     LOG_CFG_AUTO                = @:
     LOG_CFG_MANUAL              = @:
     LOG_CFG_TARGET              = @:
@@ -550,7 +581,7 @@ else ifeq ($(FINAL_LOG_MODE),silent)
 # ------------------------------------------------------------------------------
 # 4.4 모드: binary (바이너리 경로 출력)
 # ------------------------------------------------------------------------------
-else ifeq ($(FINAL_LOG_MODE),binary)
+else ifeq ($(LOG_MODE),binary)
     LOG_CFG_AUTO                = @:
     LOG_CFG_MANUAL              = @:
     LOG_CFG_TARGET              = @:
@@ -587,7 +618,7 @@ else ifeq ($(FINAL_LOG_MODE),binary)
 # ------------------------------------------------------------------------------
 # 4.5 모드: raw (원시 출력)
 # ------------------------------------------------------------------------------
-else ifeq ($(FINAL_LOG_MODE),raw)
+else ifeq ($(LOG_MODE),raw)
     LOG_CFG_AUTO                = @:
     LOG_CFG_MANUAL              = @:
     LOG_CFG_TARGET              = @:
@@ -621,7 +652,6 @@ else ifeq ($(FINAL_LOG_MODE),raw)
     FMT_WRN                     = $(1)
     LOG_BUILD_FINISH            := @:
 endif
-
 # ==============================================================================
 # 섹션 5: 조건부 로직 및 환경 감지 (Conditional Logic - Build Targets Only)
 # ==============================================================================
@@ -689,7 +719,7 @@ ifneq ($(filter $(TARGET_GOALS),$(MAKECMDGOALS)),)
     # --------------------------------------------------------------------------
     # 5.3 소스 파일 탐색 (지연 평가)
     # --------------------------------------------------------------------------
-    SRCS = $(shell find $(SRC_ROOT) -type f \( $(FIND_FLAGS) -false \) -not -path '$(BUILD_ROOT)/*' | sed 's|^./||' | sort -u)
+    _PROJECT_FILE_POOL = $(shell find $(SRC_ROOT) -type f \( $(FIND_FLAGS) -false \) -not -path '$(BUILD_ROOT)/*' | sed 's|^./||' | sort -u)
 
     # --------------------------------------------------------------------------
     # 5.4 유틸리티 함수 정의
@@ -704,7 +734,7 @@ ifneq ($(filter $(TARGET_GOALS),$(MAKECMDGOALS)),)
     ifeq ($(MODE_TARGET),executable)
         # 1. 메인 소스 파일 결정
         ifeq ($(MAIN_SRC),)
-            MAIN_SRC_AUTO := $(firstword $(filter %main.cpp %main.c,$(SRCS)))
+            MAIN_SRC_AUTO := $(firstword $(filter %main.cpp %main.c,$(_PROJECT_FILE_POOL)))
             ifeq ($(MAIN_SRC_AUTO),)
                 $(error $(call FMT_ERR,$(ERR_CFG_NO_MAIN)))
             endif
@@ -721,40 +751,35 @@ ifneq ($(filter $(TARGET_GOALS),$(MAKECMDGOALS)),)
             CMD_LOG_MODE := $(call LOG_CFG_MANUAL,$(_SRC_MAIN_NORM))
         endif
 
-        # 2. 빌드 타겟 경로 생성
-        _TARGET := $(BUILD_ROOT)/$(basename $(_SRC_MAIN_NORM))
+        # 2. 사용자 추가 소스 정규화 (USER_SRCS -> _USER_SRCS_NORM)
+        # 사용자가 make SRCS="a.c b.c" 로 입력했거나 파일에 SRCS를 정의한 경우 처리
+        _USER_SRCS_NORM :=
+        ifneq ($(USER_SRCS),)
+            _USER_SRCS_NORM := $(shell echo $(USER_SRCS) | sed 's|^./||')
+        endif
 
-        # 3. 컴파일러 선택 및 기본 전처리기 설정
+        # 3. 빌드 타겟 경로 생성
+        _TARGET := $(BUILD_ROOT)/$(basename $(_SRC_MAIN_NORM))
+        CMD_LOG_MODE := $(call LOG_CFG_TARGET,$(_TARGET) [$(MODE_TARGET)])
+
+        # 4. 컴파일러 선택 및 기본 전처리기 설정
         ifeq ($(call IS_CPP,$(_SRC_MAIN_NORM)),1)
             PREPROC := $(CXX) $(CPPFLAGS) $(CXXFLAGS)
         else
             PREPROC := $(CC) $(CPPFLAGS) $(CFLAGS)
         endif
 
-        # 4. 헤더 파싱 헬퍼 매크로
+        # 5. 헤더 파싱 헬퍼 매크로
         EXTRACT_HEADERS = $(sort $(filter $(foreach ext,$(EXT_HDR),%$(ext)),$(subst \, ,$(subst :, ,$(1)))))
 
-        # 5. [Step 1] 의존성 모드별 소스 파일(_RESOLVED_SRCS) 결정
+        # 6. [Step 1] 의존성 모드별 자동 탐색 결과(_DISCOVERED_SRCS) 결정
+        # 주의: 여기서는 MAIN_SRC 만을 기준으로 탐색합니다. (USER_SRCS는 제외)
         ifeq ($(MODE_DEPS),standalone)
-            _RESOLVED_SRCS := $(_SRC_MAIN_NORM)
+            _DISCOVERED_SRCS := $(_SRC_MAIN_NORM)
 
         else ifeq ($(MODE_DEPS),path)
-            _DEPS_RAW := $(shell $(PREPROC) -MM $(_SRC_MAIN_NORM) 2>/dev/null)
-            HDR_BASES := $(basename $(call EXTRACT_HEADERS,$(_DEPS_RAW)))
-            POTENTIAL_PAT := $(addsuffix .c,$(HDR_BASES)) $(addsuffix .cpp,$(HDR_BASES))
-            REAL_DEPS := $(filter $(POTENTIAL_PAT),$(SRCS))
-            _RESOLVED_SRCS := $(sort $(_SRC_MAIN_NORM) $(REAL_DEPS))
-
-        else ifeq ($(MODE_DEPS),file)
-            _DEPS_RAW := $(shell $(PREPROC) -MM $(_SRC_MAIN_NORM) 2>/dev/null)
-            HDR_FILENAMES := $(notdir $(call EXTRACT_HEADERS,$(_DEPS_RAW)))
-            HDR_BASES_NO_PATH := $(basename $(HDR_FILENAMES))
-            SEARCH_PATTERNS := $(foreach base,$(HDR_BASES_NO_PATH),%/$(base).cpp $(base).cpp %/$(base).c $(base).c)
-            REAL_DEPS := $(filter $(SEARCH_PATTERNS),$(SRCS))
-            _RESOLVED_SRCS := $(sort $(_SRC_MAIN_NORM) $(REAL_DEPS))
-
-        else ifeq ($(MODE_DEPS),transitive_path)
-            _RESOLVED_SRCS := $(shell \
+            # path 모드: MAIN_SRC 만 큐에 넣고 시작
+            _DISCOVERED_SRCS := $(shell \
                 start_file="$(_SRC_MAIN_NORM)"; \
                 found_srcs="$$start_file"; \
                 visited=""; \
@@ -785,9 +810,10 @@ ifneq ($(filter $(TARGET_GOALS),$(MAKECMDGOALS)),)
                 done; \
                 echo $$found_srcs)
 
-        else ifeq ($(MODE_DEPS),transitive_file)
-            _RESOLVED_SRCS := $(shell \
-                all_srcs="$(SRCS)"; \
+        else ifeq ($(MODE_DEPS),file)
+            # file 모드: MAIN_SRC 만 큐에 넣고 시작
+            _DISCOVERED_SRCS := $(shell \
+                all_srcs="$(_PROJECT_FILE_POOL)"; \
                 start_file="$(_SRC_MAIN_NORM)"; \
                 found_srcs="$$start_file"; \
                 visited=""; \
@@ -818,16 +844,20 @@ ifneq ($(filter $(TARGET_GOALS),$(MAKECMDGOALS)),)
                 echo $$found_srcs)
 
         else ifeq ($(MODE_DEPS),all)
-            _RESOLVED_SRCS := $(SRCS)
+            _DISCOVERED_SRCS := $(_PROJECT_FILE_POOL)
         endif
 
-        # 6. [Step 2] 최종 HDRS 추출 (일괄 처리)
-        # 확정된 모든 소스 파일(_RESOLVED_SRCS)을 대상으로 헤더 의존성을 한 번에 뽑아냅니다.
-        # 이 단계에서 메인 소스, 의존성 소스, 그리고 Header-Only 라이브러리까지 모두 스캔됩니다.
-        DEPS_ALL := $(shell $(PREPROC) -MM $(_RESOLVED_SRCS) 2>/dev/null)
+        # 7. 최종 소스 파일 병합 (_FINAL_SRCS)
+        # 자동 탐색된 파일들과 사용자가 수동으로 지정한 파일들을 합칩니다.
+        # sort 함수가 중복을 제거해줍니다.
+        _FINAL_SRCS := $(sort $(_DISCOVERED_SRCS) $(_USER_SRCS_NORM))
+
+        # 8. [Step 2] 최종 HDRS 추출 (일괄 처리)
+        # 확정된 모든 소스 파일(_FINAL_SRCS)을 대상으로 헤더 의존성을 한 번에 뽑아냅니다.
+        DEPS_ALL := $(shell $(PREPROC) -MM $(_FINAL_SRCS) 2>/dev/null)
         HDRS := $(call EXTRACT_HEADERS,$(DEPS_ALL))
-        
-        # 7. 헤더 파일 존재 여부 검증
+
+        # 9. 헤더 파일 존재 여부 검증
         $(foreach hdr,$(HDRS),$(if $(wildcard $(hdr)),,$(warning $(call FMT_WRN,$(WRN_CFG_FILE_NO_HEADER)): $(hdr))))
 
     # --------------------------------------------------------------------------
@@ -838,25 +868,32 @@ ifneq ($(filter $(TARGET_GOALS),$(MAKECMDGOALS)),)
             $(error $(call FMT_ERR,$(ERR_CFG_LIB_NO_NAME)))
         endif
         override MODE_DEPS := all
-        _RESOLVED_SRCS := $(SRCS)
+        
+        # 사용자가 지정한 파일(USER_SRCS)이 있으면 그것을 우선 사용, 없으면 전체 사용
+        ifneq ($(USER_SRCS),)
+             _FINAL_SRCS := $(USER_SRCS)
+        else
+             _FINAL_SRCS := $(_PROJECT_FILE_POOL)
+        endif
+
         _TARGET := $(LIB_PATH)
         CMD_LOG_MODE := $(call LOG_CFG_TARGET,$(_TARGET) [$(MODE_TARGET)])
-        
+
         # 라이브러리 모드도 일관성을 위해 헤더 정보 추출
         EXTRACT_HEADERS_LIB = $(sort $(filter $(foreach ext,$(EXT_HDR),%$(ext)),$(subst \, ,$(subst :, ,$(1)))))
-        DEPS_ALL := $(shell $(if $(filter %.cpp %.cc %.cxx %.C,$(_RESOLVED_SRCS)),$(CXX) $(CPPFLAGS) $(CXXFLAGS),$(CC) $(CPPFLAGS) $(CFLAGS)) -MM $(_RESOLVED_SRCS) 2>/dev/null)
+        DEPS_ALL := $(shell $(if $(filter %.cpp %.cc %.cxx %.C,$(_FINAL_SRCS)),$(CXX) $(CPPFLAGS) $(CXXFLAGS),$(CC) $(CPPFLAGS) $(CFLAGS)) -MM $(_FINAL_SRCS) 2>/dev/null)
         HDRS := $(call EXTRACT_HEADERS_LIB,$(DEPS_ALL))
     endif
 
     # --------------------------------------------------------------------------
     # 5.7 오브젝트 파일 경로 생성
     # --------------------------------------------------------------------------
-    _OBJS_TO_LINK := $(addsuffix .o,$(addprefix $(BUILD_ROOT)/,$(basename $(_RESOLVED_SRCS))))
+    _OBJS_TO_LINK := $(addsuffix .o,$(addprefix $(BUILD_ROOT)/,$(basename $(_FINAL_SRCS))))
 
     # --------------------------------------------------------------------------
     # 5.8 링커 자동 선택
     # --------------------------------------------------------------------------
-    IS_CPP_PROJECT := $(filter $(foreach ext,$(EXT_CPP),%$(ext)),$(_RESOLVED_SRCS))
+    IS_CPP_PROJECT := $(filter $(foreach ext,$(EXT_CPP),%$(ext)),$(_FINAL_SRCS))
     ifeq ($(IS_CPP_PROJECT),)
         LINKER := $(CC)
     else
@@ -867,11 +904,11 @@ ifneq ($(filter $(TARGET_GOALS),$(MAKECMDGOALS)),)
     # 5.9 링크 명령 결정
     # --------------------------------------------------------------------------
     ifeq ($(MODE_TARGET),static)
-        LINK_CMD = ar rcs $@ $(_OBJS_TO_LINK)
+        LINK_CMD = ar rcs $(_TARGET) $(_OBJS_TO_LINK)
     else ifeq ($(MODE_TARGET),shared)
-        LINK_CMD = $(LINKER) -shared $(LDFLAGS) -o $@ $(_OBJS_TO_LINK) $(LDLIBS)
+        LINK_CMD = $(LINKER) -shared $(LDFLAGS) -o $(_TARGET) $(_OBJS_TO_LINK) $(LDLIBS)
     else
-        LINK_CMD = $(LINKER) $(LDFLAGS) -o $@ $(_OBJS_TO_LINK) $(LDLIBS)
+        LINK_CMD = $(LINKER) $(LDFLAGS) -o $(_TARGET) $(_OBJS_TO_LINK) $(LDLIBS)
     endif
 
 endif
@@ -905,13 +942,17 @@ help:
 	@echo "    $(ANSI_FG_CYAN)clean$(ANSI_RESET)            빌드 디렉토리 안전하게 삭제"
 	@echo "    $(ANSI_FG_CYAN)clean-build$(ANSI_RESET)      클린 후 완전히 새로 빌드"
 	@echo "    $(ANSI_FG_CYAN)clean-build-run$(ANSI_RESET)  클린, 빌드, 실행을 순차 수행"
+	@echo "    $(ANSI_FG_CYAN)list-headers$(ANSI_RESET)     의존된 헤더 파일 목록 출력(경로 포함)"
 	@echo "    $(ANSI_FG_CYAN)help$(ANSI_RESET)             이 도움말 표시"
 	@echo ""
 	@echo "$(ANSI_BOLD)VARIABLES$(ANSI_RESET)"
-	@echo "    $(ANSI_FG_YELLOW)MAIN_SRC$(ANSI_RESET)=$(ANSI_FG_MAGENTA)file$(ANSI_RESET)  (별칭: $(ANSI_FG_YELLOW)s$(ANSI_RESET)=$(ANSI_FG_MAGENTA)file$(ANSI_RESET)) (관련: build(target), run(target))"
+	@echo "    $(ANSI_FG_YELLOW)MAIN_SRC$(ANSI_RESET)=$(ANSI_FG_MAGENTA)file$(ANSI_RESET)  (별칭: $(ANSI_FG_YELLOW)m$(ANSI_RESET)=$(ANSI_FG_MAGENTA)file$(ANSI_RESET)) (관련: build(target), run(target))"
 	@echo "        빌드할 메인 소스 파일 경로. 미지정 시 main.c/main.cpp 자동 탐색"
 	@echo ""
-	@echo "    $(ANSI_FG_YELLOW)MODE_LOG$(ANSI_RESET)=$(ANSI_FG_MAGENTA)mode$(ANSI_RESET)  (별칭: $(ANSI_FG_YELLOW)ml$(ANSI_RESET)=$(ANSI_FG_MAGENTA)mode$(ANSI_RESET)) (관련: 모든 빌드 관련 타겟)"
+	@echo "    $(ANSI_FG_YELLOW)SRCS$(ANSI_RESET)=$(ANSI_FG_MAGENTA)\"file1 file2 ...\"$(ANSI_RESET)  (별칭: $(ANSI_FG_YELLOW)s$(ANSI_RESET)=$(ANSI_FG_MAGENTA)\"file1 file2 ...\"$(ANSI_RESET)) (관련: build(target), MODE_DEPS(option), MODE_TARGET(option))"
+	@echo "        추가로 빌드할 소스 파일 수동 목록 지정."
+	@echo ""
+	@echo "    $(ANSI_FG_YELLOW)MODE_LOG$(ANSI_RESET)=$(ANSI_FG_MAGENTA)mode$(ANSI_RESET)  (별칭: $(ANSI_FG_YELLOW)l$(ANSI_RESET)=$(ANSI_FG_MAGENTA)mode$(ANSI_RESET)) (관련: 모든 빌드 관련 타겟)"
 	@echo "        빌드 출력 형식 제어. 기본값: normal"
 	@echo "        $(ANSI_FG_MAGENTA)normal (n)$(ANSI_RESET)            한글 메시지, 색상 강조 (기본값)"
 	@echo "        $(ANSI_FG_MAGENTA)silent (s)$(ANSI_RESET)            성공 시 출력 없음, 에러만 표시"
@@ -919,53 +960,89 @@ help:
 	@echo "        $(ANSI_FG_MAGENTA)binary (b)$(ANSI_RESET)            바이너리 경로만 출력 (도구 연동용)"
 	@echo "        $(ANSI_FG_MAGENTA)raw (r)$(ANSI_RESET)               컴파일러 원본 출력만 표시"
 	@echo ""
-	@echo "    $(ANSI_FG_YELLOW)MODE_TARGET$(ANSI_RESET)=$(ANSI_FG_MAGENTA)mode$(ANSI_RESET)  (별칭: $(ANSI_FG_YELLOW)mt$(ANSI_RESET)=$(ANSI_FG_MAGENTA)mode$(ANSI_RESET)) (관련: build(target), LIB_NAME(option))"
+	@echo "    $(ANSI_FG_YELLOW)MODE_TARGET$(ANSI_RESET)=$(ANSI_FG_MAGENTA)mode$(ANSI_RESET)  (별칭: $(ANSI_FG_YELLOW)t$(ANSI_RESET)=$(ANSI_FG_MAGENTA)mode$(ANSI_RESET)) (static, shared 모드일때는 LIB_NAME 옵션 필수)"
 	@echo "        빌드 유형. 기본값: executable"
 	@echo "        $(ANSI_FG_MAGENTA)executable (exe, bin, out)$(ANSI_RESET)        실행파일 생성 (기본값)"
 	@echo "        $(ANSI_FG_MAGENTA)static (a)$(ANSI_RESET)                        정적 라이브러리 (a)"
 	@echo "        $(ANSI_FG_MAGENTA)shared (so, dll, dylib)$(ANSI_RESET)           동적 라이브러리 (so, dll, dylib)"
 	@echo ""
-	@echo "    $(ANSI_FG_YELLOW)MODE_DEPS$(ANSI_RESET)=$(ANSI_FG_MAGENTA)mode$(ANSI_RESET)  (별칭: $(ANSI_FG_YELLOW)md$(ANSI_RESET)=$(ANSI_FG_MAGENTA)mode$(ANSI_RESET)) (관련: build(target))"
+	@echo "    $(ANSI_FG_YELLOW)MODE_DEPS$(ANSI_RESET)=$(ANSI_FG_MAGENTA)mode$(ANSI_RESET)  (별칭: $(ANSI_FG_YELLOW)d$(ANSI_RESET)=$(ANSI_FG_MAGENTA)mode$(ANSI_RESET))"
 	@echo "        의존성 탐색 방식. 기본값: path"
-	@echo "        $(ANSI_FG_MAGENTA)path (p)$(ANSI_RESET)                      경로 기반 매칭 (동일 폴더)"
-	@echo "        $(ANSI_FG_MAGENTA)file (f)$(ANSI_RESET)                      파일명 기반 매칭 (include/src 분리)"
 	@echo "        $(ANSI_FG_MAGENTA)standalone (s)$(ANSI_RESET)                단독 빌드 (의존성 무시)"
+	@echo "        $(ANSI_FG_MAGENTA)path (p)$(ANSI_RESET)                      전이적 경로 기반"
+	@echo "        $(ANSI_FG_MAGENTA)file (f)$(ANSI_RESET)                      전이적 파일명 기반"
 	@echo "        $(ANSI_FG_MAGENTA)all (a)$(ANSI_RESET)                       전체 링크 (모든 소스 포함)"
-	@echo "        $(ANSI_FG_MAGENTA)transitive_path (tp)$(ANSI_RESET)          전이적 경로 기반"
-	@echo "        $(ANSI_FG_MAGENTA)transitive_file (tf)$(ANSI_RESET)          전이적 파일명 기반"
 	@echo ""
 	@echo "    $(ANSI_FG_YELLOW)LIB_NAME$(ANSI_RESET)=$(ANSI_FG_MAGENTA)name$(ANSI_RESET)  (별칭: $(ANSI_FG_YELLOW)n$(ANSI_RESET)=$(ANSI_FG_MAGENTA)name$(ANSI_RESET)) (관련: build(target), MODE_TARGET(option))"
-	@echo "        라이브러리 빌드 시 결과물 이름 지정 경로와 함께 지정 가능 (라이브러리 모드에서만 사용)"
+	@echo "        라이브러리 모드시에 필수 옵션, 이름, 경로와 함께 지정 가능"
 	@echo ""
 	@echo "    $(ANSI_FG_YELLOW)STDIN$(ANSI_RESET)=$(ANSI_FG_MAGENTA)file$(ANSI_RESET) (별칭: $(ANSI_FG_YELLOW)i$(ANSI_RESET)), $(ANSI_FG_YELLOW)STDOUT$(ANSI_RESET)=$(ANSI_FG_MAGENTA)file$(ANSI_RESET) (별칭: $(ANSI_FG_YELLOW)o$(ANSI_RESET)), $(ANSI_FG_YELLOW)STDERR$(ANSI_RESET)=$(ANSI_FG_MAGENTA)file$(ANSI_RESET) (별칭: $(ANSI_FG_YELLOW)e$(ANSI_RESET)), $(ANSI_FG_YELLOW)ARGS$(ANSI_RESET)=$(ANSI_FG_MAGENTA)args$(ANSI_RESET) (별칭: $(ANSI_FG_YELLOW)a$(ANSI_RESET)) (관련: run(target))"
 	@echo "        실행 시 입출력 리다이렉션 및 추가 인자 지정"
 	@echo ""
+	@echo "    $(ANSI_FG_YELLOW)PKGS$(ANSI_RESET)=$(ANSI_FG_MAGENTA)\"pkg1 pkg2 ...\"$(ANSI_RESET)"
+	@echo "         pkg-config를 통해 포함할 외부 라이브러리 목록 지정"
+	@echo ""
 	@echo "$(ANSI_BOLD)ADVANCED VARIABLES$(ANSI_RESET)"
 	@echo "    일반적으로 파일을 고쳐서 변경하는 것이 좋음"
-	@echo "    $(ANSI_FG_YELLOW)SRC_ROOT$(ANSI_RESET)=$(ANSI_FG_MAGENTA)path$(ANSI_RESET) : 소스 파일 탐색의 루트 디렉토리 지정 (기본값: ./)"
-	@echo "    $(ANSI_FG_YELLOW)BUILD_ROOT$(ANSI_RESET)=$(ANSI_FG_MAGENTA)path$(ANSI_RESET) : 빌드 출력 디렉토리 경로 지정 (기본값: ./build)"
-	@echo "    $(ANSI_FG_YELLOW)CPPFLAGS$(ANSI_RESET)+=$(ANSI_FG_MAGENTA)flags$(ANSI_RESET) : 전처리기 플래그 지정 C/C++ 공통"
-	@echo "    $(ANSI_FG_YELLOW)CFLAGS$(ANSI_RESET)+=$(ANSI_FG_MAGENTA)flags$(ANSI_RESET) : C 컴파일러에 전달할 추가 플래그 지정"
-	@echo "    $(ANSI_FG_YELLOW)CXXFLAGS$(ANSI_RESET)+=$(ANSI_FG_MAGENTA)flags$(ANSI_RESET) : C++ 컴파일러에 전달할 추가 플래그 지정"
-	@echo "    $(ANSI_FG_YELLOW)LDFLAGS$(ANSI_RESET)+=$(ANSI_FG_MAGENTA)flags$(ANSI_RESET) : 링커에 전달할 추가 플래그 지정"
-	@echo "    $(ANSI_FG_YELLOW)LDLIBS$(ANSI_RESET)+=$(ANSI_FG_MAGENTA)libs$(ANSI_RESET) : 링커에 전달할 추가 라이브러리 지정"
-	@echo "    $(ANSI_FG_YELLOW)PKGS$(ANSI_RESET)=$(ANSI_FG_MAGENTA)\"pkg1 pkg2 ...\"$(ANSI_RESET) : pkg-config를 통해 포함할 외부 라이브러리 목록 지정"
+	@echo "    $(ANSI_FG_YELLOW)SRC_ROOT$(ANSI_RESET)    = $(ANSI_FG_MAGENTA)path$(ANSI_RESET)          소스 파일 탐색의 루트 디렉토리 지정 (기본값: ./)"
+	@echo "    $(ANSI_FG_YELLOW)BUILD_ROOT$(ANSI_RESET)  = $(ANSI_FG_MAGENTA)path$(ANSI_RESET)          빌드 출력 디렉토리 경로 지정 (기본값: ./build)"
+	@echo "    $(ANSI_FG_YELLOW)CPPFLAGS$(ANSI_RESET)   += $(ANSI_FG_MAGENTA)flags$(ANSI_RESET)         전처리기 플래그 지정 C/C++ 공통"
+	@echo "    $(ANSI_FG_YELLOW)CFLAGS$(ANSI_RESET)     += $(ANSI_FG_MAGENTA)flags$(ANSI_RESET)         C 컴파일러에 전달할 추가 플래그 지정"
+	@echo "    $(ANSI_FG_YELLOW)CXXFLAGS$(ANSI_RESET)   += $(ANSI_FG_MAGENTA)flags$(ANSI_RESET)         C++ 컴파일러에 전달할 추가 플래그 지정"
+	@echo "    $(ANSI_FG_YELLOW)LDFLAGS$(ANSI_RESET)    += $(ANSI_FG_MAGENTA)flags$(ANSI_RESET)         링커에 전달할 추가 플래그 지정"
+	@echo "    $(ANSI_FG_YELLOW)LDLIBS$(ANSI_RESET)     += $(ANSI_FG_MAGENTA)libs$(ANSI_RESET)          링커에 전달할 추가 라이브러리 지정"
 	@echo ""
 	@echo "$(ANSI_BOLD)EXAMPLES$(ANSI_RESET)"
-	@echo "    1. 기본 빌드 (main.c/main.cpp 자동 탐색):"
-	@echo "        $$ make build"
+	@echo "    $(ANSI_FG_CYAN)1.$(ANSI_RESET) 기본 빌드 (main.c/main.cpp 자동 탐색):"
+	@echo "        $(ANSI_FG_MAGENTA)make build$(ANSI_RESET)"
 	@echo ""
-	@echo "    2. 특정 파일 빌드 및 실행 (짧은 별칭):"
-	@echo "        $$ make build-run s=leetcode/700.cpp"
+	@echo "    $(ANSI_FG_CYAN)2.$(ANSI_RESET) 특정 파일 빌드 및 실행 (짧은 별칭):"
+	@echo "        $(ANSI_FG_MAGENTA)make build-run m=leetcode/700.cpp$(ANSI_RESET)"
 	@echo ""
-	@echo "    3. 상세 로그와 함께 클린 빌드:"
-	@echo "        $$ make clean-build s=swea/1244/main.cpp m=v"
+	@echo "    $(ANSI_FG_CYAN)3.$(ANSI_RESET) 상세 로그와 함께 클린 빌드:"
+	@echo "        $(ANSI_FG_MAGENTA)make clean-build m=swea/1244/main.cpp l=v$(ANSI_RESET)"
 	@echo ""
-	@echo "    4. 벤치마크 도구와 연동 (바이너리 경로 출력):"
-	@echo "        $$ hyperfine '\$$(make build s=leetcode/700.cpp m=b)'"
+	@echo "    $(ANSI_FG_CYAN)4.$(ANSI_RESET) 벤치마크 도구와 연동 (바이너리 경로 출력):"
+	@echo "        $(ANSI_FG_MAGENTA)hyperfine '\$$(make build m=leetcode/700.cpp l=b)'$(ANSI_RESET)"
 	@echo ""
-	@echo "    5. 라이브러리 빌드:"
-	@echo "        $$ make build LIB_NAME=mylib MODE_TARGET=static s=mylib/util.cpp"
+	@echo "    $(ANSI_FG_CYAN)5.$(ANSI_RESET) 라이브러리 빌드:"
+	@echo "        $(ANSI_FG_MAGENTA)make build LIB_NAME=mylib MODE_TARGET=static m=mylib/util.cpp$(ANSI_RESET)"
+	@echo ""
+	@echo "    $(ANSI_FG_CYAN)6.$(ANSI_RESET) 입력 파일로 실행 (stdin 리다이렉션):"
+	@echo "        $(ANSI_FG_MAGENTA)make build-run m=swea/1206/main.cpp i=swea/1206/input.txt$(ANSI_RESET)"
+	@echo ""
+	@echo "    $(ANSI_FG_CYAN)7.$(ANSI_RESET) 출력을 파일로 저장:"
+	@echo "        $(ANSI_FG_MAGENTA)make build-run m=swea/1206/main.cpp i=swea/1206/input.txt o=swea/1206/output.txt$(ANSI_RESET)"
+	@echo ""
+	@echo "    $(ANSI_FG_CYAN)8.$(ANSI_RESET) 단독 빌드 (의존성 무시, 단일 파일만, PS 문제들):"
+	@echo "        $(ANSI_FG_MAGENTA)make build m=leetcode/104.cpp d=s$(ANSI_RESET)"
+	@echo ""
+	@echo "    $(ANSI_FG_CYAN)9.$(ANSI_RESET) 전이적 의존성 탐색 (깊은 의존성 추적):"
+	@echo "        $(ANSI_FG_MAGENTA)make build m=include_transitive/main.c d=tp$(ANSI_RESET)"
+	@echo ""
+	@echo "    $(ANSI_FG_CYAN)10.$(ANSI_RESET) 디버그 플래그 추가 빌드:"
+	@echo "        $(ANSI_FG_MAGENTA)make build m=leetcode/236.cpp CXXFLAGS+='-g3 -O0 -fsanitize=address'$(ANSI_RESET)"
+	@echo ""
+	@echo "    $(ANSI_FG_CYAN)11.$(ANSI_RESET) 릴리즈 최적화 빌드:"
+	@echo "        $(ANSI_FG_MAGENTA)make build m=leetcode/700.cpp CXXFLAGS+='-O3 -march=native -flto'$(ANSI_RESET)"
+	@echo ""
+	@echo "    $(ANSI_FG_CYAN)12.$(ANSI_RESET) 외부 라이브러리 연동 (pkg-config):"
+	@echo "        $(ANSI_FG_MAGENTA)make build m=main.cpp PKGS='opencv4 gtk+-3.0'$(ANSI_RESET)"
+	@echo ""
+	@echo "    $(ANSI_FG_CYAN)13.$(ANSI_RESET) 조용한 모드로 CI/CD 파이프라인 빌드:"
+	@echo "        $(ANSI_FG_MAGENTA)make build-run m=test/main.cpp l=s$(ANSI_RESET)"
+	@echo ""
+	@echo "    $(ANSI_FG_CYAN)14.$(ANSI_RESET) 동적 라이브러리(shared) 빌드:"
+	@echo "        $(ANSI_FG_MAGENTA)make build t=shared n=libutil.so$(ANSI_RESET)"
+	@echo ""
+	@echo "    $(ANSI_FG_CYAN)15.$(ANSI_RESET) 명령행 인자와 함께 실행:"
+	@echo "        $(ANSI_FG_MAGENTA)make build-run m=main.cpp a='--verbose --config=test.json'$(ANSI_RESET)"
+	@echo ""
+	@echo "    $(ANSI_FG_CYAN)16.$(ANSI_RESET) 15번과 동일 but binary 모드로 연동:"
+	@echo "        $(ANSI_FG_MAGENTA)./\$$(make build m=main.cpp MODE_LOG=binary) --verbose --config=test.json$(ANSI_RESET)"
+	@echo ""
+	@echo "    $(ANSI_FG_CYAN)17.$(ANSI_RESET) 의존 헤더 목록 확인:"
+	@echo "        $(ANSI_FG_MAGENTA)make list-headers m=include/main.c$(ANSI_RESET)"
 	@echo ""
 	@echo "$(ANSI_BOLD)EXIT STATUS$(ANSI_RESET)"
 	@echo "    빌드 성공 시 0 반환, 실패 시 1 반환"
@@ -973,12 +1050,40 @@ help:
 	@echo "$(ANSI_BOLD)NOTES$(ANSI_RESET)"
 	@echo "    • $(ANSI_FG_GREEN)[안전 기능]$(ANSI_RESET) clean은 마커 파일 확인으로 실수 삭제 방지"
 	@echo "    • 헤더 파일 변경 시 관련 소스 자동 재컴파일"
-	@echo "    • TARGET_TYPE이 라이브러리인 경우 run 타겟은 실행 불가"
-	@echo "    • TARGET_TYPE이 라이브러리인 경우 링킹 시 LDLIBS 무시"
-	@echo "    • TARGET_TYPE이 라이브러리인 경우 LIB_NAME 지정 필수"
-	@echo "    • TARGET_TYPE이 실행파일인 경우 && MAIN_SRC 가 없으면 main.c/main.cpp 자동 탐색"
+	@echo "    • MODE_TARGET이 라이브러리인 경우 run 타겟은 실행 불가"
+	@echo "    • MODE_TARGET이 라이브러리인 경우 링킹 시 LDLIBS 무시"
+	@echo "    • MODE_TARGET이 라이브러리인 경우 LIB_NAME 지정 필수"
+	@echo "    • MODE_TARGET이 실행파일인 경우 && MAIN_SRC 가 없으면 main.c/main.cpp 자동 탐색"
 	@echo "    • 다중 코어(-j 옵션) 사용시 clean build run 같이 타겟을 분할해서 하지 말고 clean-build-run 같이 한 번에 처리하면 경쟁 상태를 방지할 수 있음"
 	@echo ""
+
+# ------------------------------------------------------------------------------
+# 6.2
+# ------------------------------------------------------------------------------
+_internal_print_config:
+	@echo "====== Build Configuration ======"
+	@echo "SRC_ROOT:        $(SRC_ROOT)"
+	@echo "BUILD_ROOT:      $(BUILD_ROOT)"
+	@echo "MAIN_SRC:        $(MAIN_SRC)"
+	@echo "MODE_LOG:        $(LOG_MODE)"
+	@echo "MODE_TARGET:     $(MODE_TARGET)"
+	@echo "MODE_DEPS:       $(MODE_DEPS)"
+	@echo "LIB_NAME:        $(LIB_NAME)"
+	@echo "LIB_PATH:        $(LIB_PATH)"
+	@echo "CXX:             $(CXX)"
+	@echo "CC:              $(CC)"
+	@echo "CPPFLAGS:        $(CPPFLAGS)"
+	@echo "CFLAGS:          $(CFLAGS)"
+	@echo "CXXFLAGS:        $(CXXFLAGS)"
+	@echo "LDFLAGS:         $(LDFLAGS)"
+	@echo "LDLIBS:          $(LDLIBS)"
+	@echo "PKGS:            $(PKGS)"
+	@echo "TARGET:          $(_TARGET)"
+	@echo "RESOLVED_SRCS:   $(_FINAL_SRCS)"
+	@echo "OBJS_TO_LINK:    $(_OBJS_TO_LINK)"
+	@echo "HDRS:            $(HDRS)"
+	@echo "LINK_CMD:        $(LINK_CMD)"
+	@echo "================================="
 
 # ------------------------------------------------------------------------------
 # 6.2 clean 타겟 (독립적 실행)
@@ -995,7 +1100,7 @@ clean: _internal_clean
 # ------------------------------------------------------------------------------
 # 6.3 빌드 준비 타겟
 # ------------------------------------------------------------------------------
-pre-build-setup:
+pre-build-setup: $(if $(filter-out 0,$(CONFIG_PRINT)),_internal_print_config)
 	@if [ ! -d "$(BUILD_ROOT)" ]; then \
 		[ -z "$(Q)" ] && echo "$(MKDIR_P) $(BUILD_ROOT)" || true; \
 		$(MKDIR_P) $(BUILD_ROOT); \
